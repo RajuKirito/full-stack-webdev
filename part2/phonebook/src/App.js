@@ -121,19 +121,17 @@ const App = () => {
       ) {
         let id = persons.findIndex((person) => person.name === newName);
         let person = persons[id];
-        Service.update({ name: newName, number: newPhone, id: person.id }).then(
-          (response) => {
-            setPersons(
-              persons.map((person) =>
-                person.name !== newName ? person : response
-              )
-            );
-            setNumberUpdated(newName);
-            setTimeout(() => {
-              setNumberUpdated(null);
-            }, 5000);
-          }
-        );
+        Service.update({ name: newName, number: newPhone }).then((response) => {
+          setPersons(
+            persons.map((person) =>
+              person.name !== newName ? person : response
+            )
+          );
+          setNumberUpdated(newName);
+          setTimeout(() => {
+            setNumberUpdated(null);
+          }, 5000);
+        });
 
         setFilterText("");
         setNewName("");
@@ -143,11 +141,10 @@ const App = () => {
       const person = {
         name: newName,
         number: newPhone,
-        id: persons.length * newPhone + 1,
       };
       console.log("Hi");
       Service.add(person).then((response) => {
-        setPersons(persons.concat(response));
+        setPersons(response);
         setNumberAdded(newName);
         setTimeout(() => {
           setNumberAdded(null);
@@ -162,21 +159,22 @@ const App = () => {
   };
 
   const handleDelete = (person) => {
-    Service.remove(person).then(
-      setPersons(
+    Service.remove(person).then((response) => {
+      console.log(response);
+      return setPersons(
         persons.filter((man) => {
-          if (man !== person) {
+          if (man.id !== response.id) {
             return true;
           } else {
-            setDeleted(person.name);
+            setDeleted(response.name);
             setTimeout(() => {
               setDeleted("");
             }, 3000);
             return false;
           }
         })
-      )
-    );
+      );
+    });
   };
 
   return (

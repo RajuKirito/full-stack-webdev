@@ -115,22 +115,31 @@ const App = () => {
     event.preventDefault();
 
     if (persons.some((person) => person.name === newName)) {
-      console.log("Hi");
       if (
         window.confirm(`Do you want to change the phone number of ${newName}?`)
       ) {
-        let id = persons.findIndex((person) => person.name === newName);
-        let person = persons[id];
-        Service.update({ name: newName, number: newPhone }).then((response) => {
-          setPersons(
-            persons.map((person) =>
-              person.name !== newName ? person : response
-            )
-          );
-          setNumberUpdated(newName);
-          setTimeout(() => {
-            setNumberUpdated(null);
-          }, 5000);
+        let id = persons.find((person) => person.name === newName);
+        Service.update({
+          name: newName,
+          number: newPhone,
+          id: id.id,
+        }).then((response) => {
+          if (response.name) {
+            setPersons(
+              persons.map((person) =>
+                person.name !== newName ? person : response
+              )
+            );
+            setNumberUpdated(newName);
+            setTimeout(() => {
+              setNumberUpdated(null);
+            }, 5000);
+          } else {
+            setDeleted(response.error.response.data.error);
+            setTimeout(() => {
+              setDeleted("");
+            }, 3000);
+          }
         });
 
         setFilterText("");
@@ -142,15 +151,23 @@ const App = () => {
         name: newName,
         number: newPhone,
       };
-      console.log("Hi");
-      Service.add(person).then((response) => {
-        setPersons(response);
-        setNumberAdded(newName);
-        setTimeout(() => {
-          setNumberAdded(null);
-        }, 5000);
-        console.log(response);
-      });
+      const addin = Service.add(person);
+      addin
+        .then((response) => {
+          if (response.name) {
+            setPersons([...persons, response]);
+            setNumberAdded(newName);
+            setTimeout(() => {
+              setNumberAdded(null);
+            }, 5000);
+          } else {
+            setDeleted(response.error.response.data.error);
+            setTimeout(() => {
+              setDeleted("");
+            }, 3000);
+          }
+        })
+        .catch((err) => console.log(err));
 
       setFilterText("");
       setNewName("");
@@ -163,10 +180,10 @@ const App = () => {
       console.log(response);
       return setPersons(
         persons.filter((man) => {
-          if (man.id !== response.id) {
+          if (man.id !== person.id) {
             return true;
           } else {
-            setDeleted(response.name);
+            setDeleted(person.name);
             setTimeout(() => {
               setDeleted("");
             }, 3000);

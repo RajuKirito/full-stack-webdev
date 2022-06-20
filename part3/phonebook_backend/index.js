@@ -1,42 +1,37 @@
+require("dotenv").config();
 const express = require("express");
 var morgan = require("morgan");
 const cors = require("cors");
-const app = express();
+const Person = require("./models/person");
 
-const data = [
-  {
-    id: 1,
-    name: "Arto Hellas",
-    number: "040-123456",
-  },
-  {
-    id: 2,
-    name: "Ada Lovelace",
-    number: "39-44-5323523",
-  },
-  {
-    id: 3,
-    name: "Dan Abramov",
-    number: "12-43-234345",
-  },
-  {
-    id: 4,
-    name: "Mary Poppendieck",
-    number: "39-23-6423122",
-  },
-];
+const app = express();
 
 const unknownEndpoint = (request, response) => {
   response.status(404).send({ error: "unknown endpoint" });
 };
 
+const errorHandler = (error, request, response, next) => {
+  //console.error(error.message);
+
+  if (error.name === "CastError") {
+    return response.status(400).send({ error: "malformatted id" });
+  } else if (error.name === "ValidationError") {
+    return response.status(400).send({ error: error.message });
+  }
+
+  next(error);
+};
+
 morgan.token("log", (req, res) => {
-  if (req.method == "POST") {
+  console.log(req.method);
+  if (req.method === "POST") {
     return JSON.stringify(req.body);
   } else {
     return null;
   }
 });
+
+app.use(express.static("build"));
 
 app.use(cors());
 app.use(express.json());
@@ -45,49 +40,65 @@ app.use(
   morgan(":method :url :status :res[content-length] - :response-time ms :log")
 );
 
-app.get("/api/persons", (req, res) => {
-  res.json(data);
+app.get("/api/persons", (req, res, next) => {
+  Person.find({})
+    .then((result) => {
+      console.log(result);
+      res.json(result);
+    })
+    .catch((err) => next(err));
 });
 
-app.get("/info", (req, res) => {
-  res.send(
-    `<p>Phonebook has info of ${data.length} people</p>
-    <p>${new Date()}</p>`
-  );
+app.get("/info", (req, res, next) => {
+  Person.find({})
+    .then((result) => res.send(`${result.length}`))
+    .catch((err) => next(err));
 });
 
-app.get("/api/persons/:id", (req, res) => {
-  const id = Number(req.params.id);
-  const person = data.find((person) => person.id === id);
-  if (person) {
-    return res.json(person);
-  }
-  return res.status(404).end();
+app.get("/api/persons/:id", (req, res, next) => {
+  Person.findById(req.params.id)
+    .then((response) => res.json(response))
+    .catch((err) => next(err));
 });
 
-app.delete("/api/persons/:id", (req, res) => {
-  const id = Number(req.params.id);
-  const newPerson = data.find((person) => person.id === id);
-  const newPersons = data.filter((person) => person.id !== id);
-  console.log(newPersons);
-  return res.status(202).json(newPerson);
+app.delete("/api/persons/:id", (req, res, next) => {
+  Person.findByIdAndRemove(req.params.id)
+    .then(() => res.status(202).end())
+    .catch((err) => next(err));
 });
 
-app.post("/api/persons", (req, res) => {
-  const person = req.body;
+app.post("/api/persons", (req, res, next) => {
+  console.log(req.body);
+  const person = new Person(req.body);
   if (!person.name || !person.number) {
     return res.json({ error: "no name or number specified" });
   }
-  if (data.some((man) => man.name === person.name)) {
-    return res.json({ error: "name already exists in the phonebook" });
-  }
-  const newPerson = { id: Math.floor(Math.random() * 100), ...person };
-
-  newPersons = data.concat(newPerson);
-  return res.json(newPersons);
+  person
+    .save()
+    .then((result) => res.json(result))
+    .catch((err) => next(err));
 });
 
+app.put("/api/persons/:id", (req, res, next) => {
+  const body = req.body;
+  const person = {
+    name: body.name,
+    number: body.number,
+  };
+  console.log(person);
+  Person.findByIdAndUpdate(req.params.id, person, {
+    new: true,
+    runValidators: true,
+    context: "query",
+  })
+    .then((response) => res.json(response))
+    .catch((err) => next(err));
+});
+
+app.use(errorHandler);
 app.use(unknownEndpoint);
 
-const PORT = process.env.PORT || 3001;
-app.listen(PORT);
+const PORT = process.env.PORT;
+app.listen(PORT, () => {
+  console.log("listening on port ", PORT);
+});

@@ -7,3 +7,5 @@
 /part2/data-for-countries/.env
 /part3/phonebook_backend/.env
 /part3/phonebook_backend/node_modules
+/part3/bloglist/node_modules
+/part3/bloglist/.env
